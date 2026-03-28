@@ -31,3 +31,4 @@ Backend/data/processed/*.json
 .Trashes
 ehthumbs.db
 Thumbs.dbBackend/data/index/*.json
+!Backend/data/scoutsearch_data.zip

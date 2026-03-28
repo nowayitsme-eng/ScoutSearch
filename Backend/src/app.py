@@ -1941,6 +1941,58 @@ def add_new_player():
             'traceback': traceback.format_exc()
         }), 500
 
+def init_advanced_components():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # 0. Extract compressed dataset if running on cloud
+    zip_path = os.path.join(base_dir, 'data', 'scoutsearch_data.zip')
+    index_dir = os.path.join(base_dir, 'data', 'index')
+    
+    if os.path.exists(zip_path):
+        print(f"[STARTUP] Found dataset payload {zip_path}, unzipping...")
+        try:
+            import zipfile
+            with zipfile.ZipFile(zip_path, 'r') as zipf:
+                zipf.extractall(index_dir)
+            print("[STARTUP] Dataset extracted successfully.")
+        except Exception as e:
+            print(f"[ERROR] Failed to extract dataset payload: {e}")
+            
+    print("\n Initializing components...")
+    
+    # 1. Autocomplete System
+    try:
+        lexicon_path = os.path.join(base_dir, 'data', 'index', 'lexicon_complete.json')
+        if os.path.exists(lexicon_path):
+            from autocomplete import autocomplete_engine
+            initialize_autocomplete(lexicon_path)
+            print("[OK] Autocomplete engine initialized")
+        else:
+            print("[WARNING] Lexicon not found, autocomplete disabled")
+    except Exception as e:
+        print(f"[WARNING] Autocomplete initialization failed: {e}")
+    
+    # 2. Semantic Search
+    try:
+        from semantic_search import semantic_engine
+        initialize_semantic_search()  # Loads Word2Vec or custom synonyms
+        print("[OK] Semantic search initialized with Word2Vec embeddings")
+    except Exception as e:
+        print(f"[WARNING] Semantic search initialization failed: {e}")
+    
+    # 3. Dynamic Indexer
+    try:
+        # Use a local reference to avoid global keyword issue at module level
+        _di = DynamicIndexer(data_dir=index_dir)
+        # Update the module-level variable via globals()
+        globals()['dynamic_indexer'] = _di
+        print(f"[OK] Dynamic indexer initialized ({_di.get_stats()['total_terms']:,} terms)")
+    except Exception as e:
+        print(f"[WARNING] Dynamic indexer initialization failed: {e}")
+        
+# Run initialization automatically for WSGI environments (like gunicorn)
+init_advanced_components()
+
 if __name__ == '__main__':
     # Check if required files exist
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1963,40 +2015,6 @@ if __name__ == '__main__':
         print("=" * 60)
         print("[STARTUP] STARTING ENHANCED SCOUTSEARCH SERVER")
         print("=" * 60)
-        
-        # Initialize new components
-        print("\n Initializing components...")
-        
-        # 1. Autocomplete System
-        try:
-            lexicon_path = os.path.join(base_dir, 'data', 'index', 'lexicon_complete.json')
-            if os.path.exists(lexicon_path):
-                from autocomplete import autocomplete_engine
-                initialize_autocomplete(lexicon_path)
-                print("[OK] Autocomplete engine initialized")
-            else:
-                print("[WARNING] Lexicon not found, autocomplete disabled")
-        except Exception as e:
-            print(f"[WARNING] Autocomplete initialization failed: {e}")
-        
-        # 2. Semantic Search
-        try:
-            from semantic_search import semantic_engine
-            initialize_semantic_search()  # Loads Word2Vec or custom synonyms
-            print("[OK] Semantic search initialized with Word2Vec embeddings")
-        except Exception as e:
-            print(f"[WARNING] Semantic search initialization failed: {e}")
-        
-        # 3. Dynamic Indexer
-        try:
-            index_dir = os.path.join(base_dir, 'data', 'index')
-            # Use a local reference to avoid global keyword issue at module level
-            _di = DynamicIndexer(data_dir=index_dir)
-            # Update the module-level variable via globals()
-            globals()['dynamic_indexer'] = _di
-            print(f"[OK] Dynamic indexer initialized ({_di.get_stats()['total_terms']:,} terms)")
-        except Exception as e:
-            print(f"[WARNING] Dynamic indexer initialization failed: {e}")
         
         # 4. Performance Monitor (already initialized globally)
         print("[OK] Performance monitor active")
