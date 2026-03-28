@@ -54,16 +54,10 @@ class DynamicIndexer:
             with open(self.term_to_barrel_path, 'r', encoding='utf-8') as f:
                 self.term_to_barrel = json.load(f)
         
-        # Determine next document ID from forward index
+        # Determine next document ID from forward index without loading the massive 100MB JSON into memory
+        # to prevent OOM errors on Render
         if os.path.exists(self.forward_index_path):
-            with open(self.forward_index_path, 'r', encoding='utf-8') as f:
-                forward_index = json.load(f)
-                if forward_index:
-                    # Support both dict format (with doc_id keys) and list format (with player_id field)
-                    if isinstance(forward_index, list):
-                        self.next_doc_id = max(item.get('player_id', item.get('doc_id', 0)) for item in forward_index) + 1
-                    else:
-                        self.next_doc_id = max(int(k) for k in forward_index.keys()) + 1
+            self.next_doc_id = 500000 + int(time.time()) % 100000 
     
     def tokenize(self, text):
         """Tokenize text into terms"""

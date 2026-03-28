@@ -87,7 +87,7 @@ class TextSearchEngine:
         from semantic_search import semantic_engine
         self.semantic_engine = semantic_engine
         
-        self.documents = []
+        self.documents = {}
         self.player_mapping = {}
         self.inverted_index = None  # Lazy load (fallback)
         self.word_doc_freq = None   # Lazy load
@@ -107,7 +107,9 @@ class TextSearchEngine:
             with open(self.dataset_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     doc = json.loads(line)
-                    self.documents.append(doc)
+                    pid = str(doc.get('player_id', ''))
+                    # Store only what is needed or minimal representation
+                    self.documents[pid] = doc
             self.total_docs = len(self.documents)
             print(f"[OK] Text documents loaded: {self.total_docs} documents")
             
@@ -232,37 +234,37 @@ class TextSearchEngine:
             if len(original_query_terms) > 1:
                 query_lower = query.lower()
                 for player_id in list(doc_scores.keys()):
-                    doc = next((d for d in self.documents if d.get('player_id') == player_id), None)
+                    doc = self.documents.get(str(player_id))
                     if doc:
                         doc_text = doc.get('text_content', '').lower()
                         if query_lower in doc_text:
                             doc_scores[player_id] *= 2.5
                         elif all(term in doc_text for term in original_query_terms):
                             doc_scores[player_id] *= 1.5
-            
+
             # Sort and get results
             ranked_player_ids = sorted(doc_scores.keys(), key=lambda x: doc_scores[x], reverse=True)
-            
+
             results = []
             for player_id in ranked_player_ids[:limit]:
-                doc = next((d for d in self.documents if d.get('player_id') == player_id), None)
+                doc = self.documents.get(str(player_id))
                 if doc:
                     results.append(doc)
-            
+
             return results
-            
+
         except Exception as e:
             print(f"[WARNING] Error in text search: {e}")
             import traceback
             traceback.print_exc()
             return self.simple_search(query, limit)
-    
+
     def simple_search(self, query, limit=50):
         """Fallback simple substring search"""
         query_lower = query.lower()
         results = []
-        
-        for doc in self.documents:
+
+        for doc in self.documents.values():
             text_content = doc.get('text_content', '').lower()
             if query_lower in text_content:
                 results.append(doc)
@@ -295,11 +297,25 @@ class ScoutSearchEngine:
     
     def load_data(self):
         """Load the FIFA 22 dataset"""
+        # Only load the columns we actually need to save massive amounts of RAM on Render
+        needed_cols = [
+            'sofifa_id', 'short_name', 'long_name', 'player_positions', 
+            'overall', 'potential', 'value_eur', 'wage_eur', 'age', 
+            'height_cm', 'club_name', 'nationality_name', 'preferred_foot', 
+            'pace', 'shooting', 'passing', 'dribbling', 'defending', 'physic', 
+            'player_face_url', 'club_logo_url', 'nation_flag_url', 'work_rate'
+        ]
         try:
-            self.df = pd.read_csv(self.data_path, encoding='utf-8', low_memory=False)
-            print(f"[OK] Dataset loaded: {len(self.df)} players")
+            # Check which columns actually exist to avoid KeyError
+            import csv
+            with open(self.data_path, 'r', encoding='utf-8', errors='ignore') as f:
+                header = next(csv.reader(f))
+            actual_cols = [c for c in needed_cols if c in header]
+            
+            self.df = pd.read_csv(self.data_path, usecols=actual_cols, encoding='utf-8', low_memory=False)
+            print(f"[OK] Dataset loaded: {len(self.df)} players, {len(self.df.columns)} columns")
         except UnicodeDecodeError:
-            self.df = pd.read_csv(self.data_path, encoding='latin-1', low_memory=False)
+            self.df = pd.read_csv(self.data_path, usecols=actual_cols, encoding='latin-1', low_memory=False)
             print(f"[OK] Dataset loaded with latin-1: {len(self.df)} players")
         except FileNotFoundError:
             print(f"[ERROR] File {self.data_path} not found!")
@@ -348,6 +364,20 @@ class ScoutSearchEngine:
         # Fill missing text columns
         if 'preferred_foot' in self.df.columns:
             self.df['preferred_foot'] = self.df['preferred_foot'].fillna('Right')
+            
+        # Parse work_rate into attacking and defensive
+        if 'work_rate' in self.df.columns and 'attacking_work_rate' not in self.df.columns:
+            try:
+                rates = self.df['work_rate'].str.split('/', expand=True)
+                if len(rates.columns) == 2:
+                    self.df['attacking_work_rate'] = rates[0].str.strip()
+                    self.df['defensive_work_rate'] = rates[1].str.strip()
+                else:
+                    self.df['attacking_work_rate'] = 'Medium'
+                    self.df['defensive_work_rate'] = 'Medium'
+            except:
+                self.df['attacking_work_rate'] = 'Medium'
+                self.df['defensive_work_rate'] = 'Medium'
     
     def search_players(self, filters, sort_by='overall', ascending=False, limit=50):
         """Main search function for attribute-based search"""

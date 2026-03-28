@@ -86,13 +86,12 @@ class AutocompleteTrie:
         try:
             with open(self.lexicon_path, 'r', encoding='utf-8') as f:
                 lexicon = json.load(f)
-            
-            logger.info(f"Building trie from {len(lexicon):,} lexicon entries...")
-            
-            for entry in lexicon:
-                token = entry.get('token', '')
-                df = entry.get('df', 1)  # Document frequency as proxy for importance
                 
+            # If large (like in Render's 512MB RAM tier), heavily truncate to the top 15k most common words
+            if len(lexicon) > 15000:
+                lexicon = sorted(lexicon, key=lambda x: x.get('df', 1), reverse=True)[:15000]
+
+            logger.info(f"Building trie from {len(lexicon):,} lexicon entries (truncated for memory)...")
                 if token and len(token) >= 2:  # Skip single chars
                     self.insert(token, frequency=df)
                     self.word_count += 1
