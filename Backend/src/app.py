@@ -1976,14 +1976,15 @@ def init_advanced_components():
     
     # 0. Extract compressed dataset if running on cloud
     zip_path = os.path.join(base_dir, 'data', 'scoutsearch_data.zip')
-    index_dir = os.path.join(base_dir, 'data', 'index')
+    data_dir = os.path.join(base_dir, 'data')
     
     if os.path.exists(zip_path):
         print(f"[STARTUP] Found dataset payload {zip_path}, unzipping...")
         try:
             import zipfile
             with zipfile.ZipFile(zip_path, 'r') as zipf:
-                zipf.extractall(index_dir)
+                # We changed the zip structure to extract straight into 'data' rather than 'data/index'
+                zipf.extractall(data_dir)
             print("[STARTUP] Dataset extracted successfully.")
         except Exception as e:
             print(f"[ERROR] Failed to extract dataset payload: {e}")
