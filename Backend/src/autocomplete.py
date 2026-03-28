@@ -92,6 +92,11 @@ class AutocompleteTrie:
                 lexicon = sorted(lexicon, key=lambda x: x.get('df', 1), reverse=True)[:15000]
 
             logger.info(f"Building trie from {len(lexicon):,} lexicon entries (truncated for memory)...")
+            
+            for entry in lexicon:
+                token = entry.get('token', '')
+                df = entry.get('df', 1)  # Document frequency as proxy for importance
+                
                 if token and len(token) >= 2:  # Skip single chars
                     self.insert(token, frequency=df)
                     self.word_count += 1
