@@ -1,0 +1,33 @@
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Datasets & Large Files
+football-datasets/
+Backend/data/raw/*.csv
+Backend/data/raw/*.jsonl
+Backend/data/index/barrels/
+Backend/data/processed/*.json
+
+# Keep the directory structure for data but ignore big contents
+!Backend/data/
+!Backend/data/raw/
+!Backend/data/index/
+!Backend/data/processed/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.dbBackend/data/index/*.json
