@@ -29,6 +29,19 @@ base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 project_root = os.path.dirname(base_dir)
 static_dir = os.path.join(project_root, 'static')
 
+# EXTREMELY IMPORTANT: Extract payload sequentially before ANYTHING is instantiated globally
+_zip_path = os.path.join(base_dir, 'data', 'scoutsearch_data.zip')
+_data_dir = os.path.join(base_dir, 'data')
+if os.path.exists(_zip_path) and not os.path.exists(os.path.join(_data_dir, 'raw', 'players_22.csv')):
+    print(f"[STARTUP] Unzipping payload {_zip_path} as early step...")
+    try:
+        import zipfile
+        with zipfile.ZipFile(_zip_path, 'r') as zipf:
+            zipf.extractall(_data_dir)
+        print("[STARTUP] Raw Dataset & Indexes extracted successfully before engine instantiation.")
+    except Exception as e:
+        print(f"[CRITICAL ERROR] Zip extraction failed: {e}")
+
 app = Flask(__name__, static_folder=static_dir, static_url_path='/static')
 CORS(app)  # Enable CORS for all routes
 
@@ -2013,8 +2026,9 @@ def init_advanced_components():
     
     # 3. Dynamic Indexer
     try:
+        index_dir_path = os.path.join(base_dir, 'data', 'index')
         # Use a local reference to avoid global keyword issue at module level
-        _di = DynamicIndexer(data_dir=index_dir)
+        _di = DynamicIndexer(data_dir=index_dir_path)
         # Update the module-level variable via globals()
         globals()['dynamic_indexer'] = _di
         print(f"[OK] Dynamic indexer initialized ({_di.get_stats()['total_terms']:,} terms)")
