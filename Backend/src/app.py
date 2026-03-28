@@ -316,7 +316,8 @@ class ScoutSearchEngine:
             'overall', 'potential', 'value_eur', 'wage_eur', 'age', 
             'height_cm', 'club_name', 'nationality_name', 'preferred_foot', 
             'pace', 'shooting', 'passing', 'dribbling', 'defending', 'physic', 
-            'player_face_url', 'club_logo_url', 'nation_flag_url', 'work_rate'
+            'player_face_url', 'club_logo_url', 'nation_flag_url', 'work_rate',
+            'skill_moves', 'weak_foot'
         ]
         try:
             # Check which columns actually exist to avoid KeyError
