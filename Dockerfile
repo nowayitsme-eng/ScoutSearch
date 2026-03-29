@@ -3,6 +3,9 @@ FROM python:3.10-slim
 # Set the working directory
 WORKDIR /app
 
+# Prevent Python from buffering stdout and stderr
+ENV PYTHONUNBUFFERED=1
+
 # Install system dependencies (sometimes needed for building pandas/numpy)
 RUN apt-get update && apt-get install -y \
     build-essential \
