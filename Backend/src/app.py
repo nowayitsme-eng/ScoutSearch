@@ -1197,15 +1197,40 @@ class ScoutSearchEngine:
             print(f"[ERROR] Error loading detailed profiles: {e}")
             self.detailed_profiles = {}
 
-# Initialize the search engine
-search_engine = ScoutSearchEngine()
-
-# Initialize optimized search engine (with pre-built indices)
+# Initialize the search engine lazily
+search_engine = type('Dummy', (), {'df': None, 'text_search_engine': type('Dummy', (), {'barrel_manager': None})()})()
 optimized_search = None
-try:
-    optimized_search = OptimizedSearchEngine(search_engine.df)
-except Exception as e:
-    print(f"[WARNING] Optimized search not available: {e}")
+backend_loaded = False
+
+def background_initialization():
+    global search_engine, optimized_search, backend_loaded
+    print("\n[STARTUP] Starting heavy background initialization on threaded worker...")
+    try:
+        import time
+        from optimized_search import OptimizedSearchEngine
+        
+        real_engine = ScoutSearchEngine()
+        search_engine = real_engine
+        
+        try:
+            optimized_search = OptimizedSearchEngine(search_engine.df)
+        except Exception as oe:
+            print(f"[WARNING] Optimized search not available: {oe}")
+            
+        init_advanced_components()
+        backend_loaded = True
+        
+        print("\n" + "="*50)
+        print("[STARTUP] ENTIRE BACKEND PROVISIONED & READY FOR TRAFFIC!")
+        print("="*50 + "\n")
+    except Exception as e:
+        import traceback
+        print(f"[CRITICAL ERROR] Background initialization failed: {e}")
+        traceback.print_exc()
+
+import threading
+init_thread = threading.Thread(target=background_initialization, daemon=True)
+init_thread.start()
 
 
 @app.route('/')
@@ -2037,7 +2062,7 @@ def init_advanced_components():
         print(f"[WARNING] Dynamic indexer initialization failed: {e}")
         
 # Run initialization automatically for WSGI environments (like gunicorn)
-init_advanced_components()
+# init_advanced_components() # Handled by the background thread now
 
 if __name__ == '__main__':
     # Check if required files exist
