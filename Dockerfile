@@ -28,4 +28,4 @@ EXPOSE 7860
 
 # Start Gunicorn server bound to 0.0.0.0:7860
 # Since we have 16GB of RAM, we can afford multi-workers
-CMD ["gunicorn", "Backend.src.app:app", "--bind", "0.0.0.0:7860", "--workers", "2", "--threads", "4", "--timeout", "120"]
+CMD ["gunicorn", "Backend.src.app:app", "--bind", "0.0.0.0:7860", "--workers", "1", "--threads", "2", "--timeout", "120"]
